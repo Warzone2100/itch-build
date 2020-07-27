@@ -1,0 +1,25 @@
+[[actions]]
+name = "Play"
+path = "bin/warzone2100.exe"
+platform = "windows"
+sandbox = true
+
+[[prereqs]]
+name = "vcredist-2019-x86"
+platform = "windows"
+
+[[prereqs]]
+name = "vcredist-2019-x64"
+platform = "windows"
+
+[[actions]]
+name = "Play"
+path = "Warzone 2100.app"
+platform = "osx"
+sandbox = true
+
+[[actions]]
+name = "Play"
+path = "bin/warzone2100"
+platform = "linux"
+sandbox = true

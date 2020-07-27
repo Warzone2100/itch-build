@@ -1,0 +1,168 @@
+name: Windows
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  publish_windows_to_itch:
+    strategy:
+      matrix:
+        architecture: ["x86"]
+        ## NOTE: Unfortunately, 64-bit Windows builds are currently broken because of QScript (see: http://developer.wz2100.net/ticket/4763)
+        ## Whenever that ticket is resolved, the following will build 64-bit as well:
+        #architecture: ["x86", "x64"]
+      fail-fast: false
+    env:
+      WZ_TARGET_ARCH: ${{ matrix.architecture }}
+    name: 'Publish ${{ matrix.architecture }}'
+    runs-on: windows-latest
+    steps:
+    - name: Configuration
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: config
+      run: |
+        $DL_BASEDIR = "${{ github.workspace }}\dl"
+        $BUTLER_INSTALL_PATH = "${{ github.workspace }}\butler"
+        $UPLOAD_INSTALL_PATH = "${{ github.workspace }}\upload"
+        
+        New-Item -ItemType Directory -Force -Path "$DL_BASEDIR"
+        New-Item -ItemType Directory -Force -Path "$BUTLER_INSTALL_PATH"
+        New-Item -ItemType Directory -Force -Path "$UPLOAD_INSTALL_PATH"
+        
+        echo "::set-env name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "::set-output name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "::set-env name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "::set-output name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "::set-env name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        echo "::set-output name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        
+        # Get the latest GitHub release info
+        $github_latest_release_url="https://api.github.com/repos/Warzone2100/warzone2100/releases/latest"
+        $Header = @{"Authorization" = ("token ${env:GITHUB_TOKEN}")}
+        $WZ_LATEST_RELEASE_INFO = Invoke-RestMethod -Uri $github_latest_release_url -Method Get -Headers $Header
+
+        $WZ_LATEST_RELEASE_TAG=($WZ_LATEST_RELEASE_INFO.tag_name)
+        echo "WZ_LATEST_RELEASE_TAG=$WZ_LATEST_RELEASE_TAG"
+        echo "::set-output name=WZ_LATEST_RELEASE_TAG::${WZ_LATEST_RELEASE_TAG}"
+  
+        $Desired_Asset_Name="warzone2100_win_${env:WZ_TARGET_ARCH}_archive.zip"
+        $WZ_LATEST_RELEASE_ASSET=($WZ_LATEST_RELEASE_INFO.assets | where { $_.name -eq "$Desired_Asset_Name" })
+        $WZ_LATEST_RELEASE_ASSET_URL=($WZ_LATEST_RELEASE_ASSET.url)
+        echo "WZ_LATEST_RELEASE_ASSET_URL=$WZ_LATEST_RELEASE_ASSET_URL"
+        echo "::set-output name=WZ_LATEST_RELEASE_ASSET_URL::${WZ_LATEST_RELEASE_ASSET_URL}"
+        
+        # Configure WZ_REPO_PATH
+        $WZ_REPO_PATH="${{ github.workspace }}\itchrepo"
+        echo "::set-env name=WZ_REPO_PATH::${WZ_REPO_PATH}"
+        echo "::set-output name=WZ_REPO_PATH::${WZ_REPO_PATH}"
+    - uses: actions/checkout@v2
+      with:
+        path: 'itchrepo'
+    - name: Download & Install Itch.io Butler
+      id: butler-install
+      run: |
+        Start-Sleep -Milliseconds 1 # See: https://stackoverflow.com/a/49859001
+        
+        $VerbosePreference = "Continue"
+        . "${env:WZ_REPO_PATH}\.ci\powershell\request.ps1"
+        
+        $BUTLER_DL_PATH = "${{ steps.config.outputs.DL_BASEDIR }}\butler-win.zip"
+        $BUTLER_DL_URL="https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default"
+        Write-Host "Original Url: `"${BUTLER_DL_URL}`""
+        $url = Get-RedirectedUrl "${BUTLER_DL_URL}"
+        Write-Host "Redirected Url: `"$url`""
+        $req = Req -Params @{ 'Method'='GET';'Uri'="$url";'OutFile'="$BUTLER_DL_PATH" } -Retries 3 -SecondsDelay 10
+        
+        # Extract the ZIP file
+        Expand-Archive -LiteralPath "$BUTLER_DL_PATH" -DestinationPath "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}"
+        
+        # Check the Authenticode signature
+        $signature = Get-AuthenticodeSignature -LiteralPath "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}\butler.exe"
+        if ($signature.Status -ne "Valid")
+        {
+          # Failed to validate file signature
+          Throw "The file's signature is invalid"
+        }
+        Write-Host "Authenticode Signature: Valid"
+        $dnDict = ($signature.SignerCertificate.Subject -split ', ') |
+                 foreach `
+                     { $dnDict = @{} } `
+                     { $item = $_.Split('='); $dnDict[$item[0]] = $item[1] } `
+                     { $dnDict }
+        $signer_common_name = $dnDict['CN'] #$signature.SignerCertificate.subject.split(',')[0].split('=')[1]
+        Write-Host "Authenticode Signature SignerCertificate.Subject: $($dnDict | Out-String)"
+        if ($signer_common_name -ne "itch corp.")
+        {
+          # Unexpected signing common name
+          throw "The file's signature has an unexpected common name: `"$signer_common_name`""
+        }
+        Write-Host "SignerCertificate.Subject is as expected"
+    - name: Download & extract the latest Release Windows archive
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        Start-Sleep -Milliseconds 1 # See: https://stackoverflow.com/a/49859001
+        
+        $VerbosePreference = "Continue"
+        . "${env:WZ_REPO_PATH}\.ci\powershell\request.ps1"
+        
+        $WINARCHIVE_DL_PATH = "${{ steps.config.outputs.DL_BASEDIR }}\windows-archive.zip"
+        #$WINARCHIVE_DL_URL="https://github.com/Warzone2100/warzone2100/releases/download/${{ steps.config.outputs.WZ_LATEST_RELEASE_TAG }}/warzone2100_win_${env:WZ_TARGET_ARCH}_archive.zip"
+        $WINARCHIVE_DL_URL="${{ steps.config.outputs.WZ_LATEST_RELEASE_ASSET_URL }}"
+        Write-Host "Original Url: `"${WINARCHIVE_DL_URL}`""
+        $url = Get-RedirectedUrl "${WINARCHIVE_DL_URL}"
+        Write-Host "Redirected Url: `"$url`""
+        $req = Req -Params @{ 'Method'='GET';'Uri'="$url";'OutFile'="$WINARCHIVE_DL_PATH";'Headers'=@{'Accept' = 'application/octet-stream'; "Authorization" = ("token ${env:GITHUB_TOKEN}")} } -Retries 3 -SecondsDelay 10
+        
+        # Extract the ZIP file
+        Expand-Archive -LiteralPath "$WINARCHIVE_DL_PATH" -DestinationPath "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}"
+    - name: Download sequences.wz
+      run: |
+        Start-Sleep -Milliseconds 1 # See: https://stackoverflow.com/a/49859001
+        
+        $VerbosePreference = "Continue"
+        . "${env:WZ_REPO_PATH}\.ci\powershell\request.ps1"
+        
+        $SEQUENCES_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}\sequences.wz"
+        $SEQUENCES_DL_URL="https://github.com/Warzone2100/wz-sequences/releases/download/v3/high-quality-en-sequences.wz"
+        $SEQUENCES_DL_SHA256="90ff552ca4a70e2537e027e22c5098ea4ed1bc11bb7fc94138c6c941a73d29fa"
+        $req = Req -Params @{ 'Method'='GET';'Uri'="$SEQUENCES_DL_URL";'OutFile'="$SEQUENCES_DL_PATH" } -Retries 3 -SecondsDelay 10
+        
+        # Verify SHA256 hash
+        $sequences_wz_hash = Get-FileHash -Path "$SEQUENCES_DL_PATH" -Algorithm SHA256
+        If ($sequences_wz_hash.Hash -eq ${SEQUENCES_DL_SHA256}) {
+          Write-Output "Verified downloaded sequences.wz SHA256"
+        } Else {
+          Write-Error "The downloaded sequences.wz hash `n`t'$($sequences_wz_hash.Hash)'`ndoes not match the expected hash: `n`t'${SEQUENCES_DL_SHA256}'"
+        }
+        
+        # Move sequences.wz to the upload directory
+        Move-Item -LiteralPath "${SEQUENCES_DL_PATH}" -Destination "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}\data"
+    - name: Add .itch.toml
+      working-directory: '.\itchrepo'
+      run: |
+        Copy-Item -LiteralPath "pkg\.itch.toml" -Destination "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}"
+    - name: Configuration for Windows Defender
+      run: |
+        Remove-MpPreference -ExclusionPath (Get-MpPreference).ExclusionPath
+        Set-Service -Name wuauserv -StartupType Manual -Status Running
+    - name: Update Windows Defender definitions
+      shell: cmd
+      run: |
+        "C:\Program Files\Windows Defender\MpCmdRun.exe" -SignatureUpdate
+    - name: AV Scan Butler
+      shell: cmd
+      run: |
+        "C:\Program Files\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}"
+    - name: AV Scan Windows upload directory
+      shell: cmd
+      run: |
+        "C:\Program Files\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}"
+    - name: 'Push Windows ${{ matrix.architecture }} build using Butler'
+      env:
+        BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+      run: |
+        & "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}\butler.exe" push "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}" warzone-2100/warzone2100:windows-stable-${env:WZ_TARGET_ARCH} --userversion "${{ steps.config.outputs.WZ_LATEST_RELEASE_TAG }}" --if-changed

@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  publish_build_to_itch:
+    strategy:
+      matrix:
+        include:
+          - build-desc: "macOS"
+            asset-name: "warzone2100_macOS.zip"
+            itch-channel: "macos-stable-x64"
+      fail-fast: false
+    env:
+      WZ_TARGET_ARCH: ${{ matrix.build-desc }}
+    name: 'Publish ${{ matrix.build-desc }}'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Configuration
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      id: config
+      run: |
+        DL_BASEDIR="${{ github.workspace }}\dl"
+        BUTLER_INSTALL_PATH="${{ github.workspace }}\butler"
+        UPLOAD_INSTALL_PATH="${{ github.workspace }}\upload"
+        
+        mkdir -p "$DL_BASEDIR"
+        mkdir -p "$BUTLER_INSTALL_PATH"
+        mkdir -p "$UPLOAD_INSTALL_PATH"
+        
+        echo "::set-env name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "::set-output name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "::set-env name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "::set-output name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "::set-env name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        echo "::set-output name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        
+        # Get the latest GitHub release info
+        github_latest_release_url="https://api.github.com/repos/Warzone2100/warzone2100/releases/latest"
+        curl -H "Authorization: token ${GITHUB_TOKEN}" -s "$github_latest_release_url" > "$DL_BASEDIR/latest.json"
+        
+        WZ_LATEST_RELEASE_TAG=$(cat "$DL_BASEDIR/latest.json" | jq --raw-output '.tag_name')
+        echo "WZ_LATEST_RELEASE_TAG=$WZ_LATEST_RELEASE_TAG"
+        echo "::set-output name=WZ_LATEST_RELEASE_TAG::${WZ_LATEST_RELEASE_TAG}"
+        
+        WZ_LATEST_RELEASE_ASSET_URL=$(cat "$DL_BASEDIR/latest.json" | jq --raw-output '.assets | .[] | select(.name=="${{ matrix.asset-name }}") | .url')
+        echo "WZ_LATEST_RELEASE_ASSET_URL=$WZ_LATEST_RELEASE_ASSET_URL"
+        echo "::set-output name=WZ_LATEST_RELEASE_ASSET_URL::${WZ_LATEST_RELEASE_ASSET_URL}"
+        
+        # Configure WZ_REPO_PATH
+        WZ_REPO_PATH="${{ github.workspace }}\itchrepo"
+        echo "::set-env name=WZ_REPO_PATH::${WZ_REPO_PATH}"
+        echo "::set-output name=WZ_REPO_PATH::${WZ_REPO_PATH}"
+    - uses: actions/checkout@v2
+      with:
+        path: 'itchrepo'
+    - name: Download & Install Itch.io Butler
+      id: butler-install
+      run: |
+        BUTLER_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}\butler.zip"
+        curl -Lf "https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default" --retry 3 --connect-timeout "30" --output "$BUTLER_DL_PATH"
+        unzip "$BUTLER_DL_PATH" -d "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}"
+        # GNU unzip tends to not set the executable bit even though it's set in the .zip
+        chmod +x "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}/butler"
+        # just a sanity check run (and also helpful in case you're sharing CI logs)
+        "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}/butler" -V
+    - name: Download & extract the latest Release asset
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        RELEASE_ARCHIVE_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}\release-archive.zip"
+        curl -H "Accept: application/octet-stream" -H "Authorization: token ${GITHUB_TOKEN}" -Lf "${{ steps.config.outputs.WZ_LATEST_RELEASE_ASSET_URL }}" --retry 3 --connect-timeout "30" --output "${RELEASE_ARCHIVE_DL_PATH}"
+        unzip "${RELEASE_ARCHIVE_DL_PATH}" -d "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}"
+    - name: Add .itch.toml
+      working-directory: './itchrepo'
+      run: |
+        cp "pkg/.itch.toml" "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}/.itch.toml"
+    - name: 'Push ${{ matrix.build-desc }} build using Butler'
+      env:
+        BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+      run: |
+        "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}/butler" push "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}" "warzone-2100/warzone2100:${{ matrix.itch-channel }}" --userversion "${{ steps.config.outputs.WZ_LATEST_RELEASE_TAG }}" --if-changed
