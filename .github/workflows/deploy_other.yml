@@ -32,11 +32,11 @@ jobs:
         mkdir -p "$BUTLER_INSTALL_PATH"
         mkdir -p "$UPLOAD_INSTALL_PATH"
         
-        echo "::set-env name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "DL_BASEDIR=${DL_BASEDIR}" >> $GITHUB_ENV
         echo "::set-output name=DL_BASEDIR::${DL_BASEDIR}"
-        echo "::set-env name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "BUTLER_INSTALL_PATH=${BUTLER_INSTALL_PATH}" >> $GITHUB_ENV
         echo "::set-output name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
-        echo "::set-env name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        echo "UPLOAD_INSTALL_PATH=${UPLOAD_INSTALL_PATH}" >> $GITHUB_ENV
         echo "::set-output name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
         
         # Get the latest GitHub release info
@@ -53,7 +53,7 @@ jobs:
         
         # Configure WZ_REPO_PATH
         WZ_REPO_PATH="${{ github.workspace }}\itchrepo"
-        echo "::set-env name=WZ_REPO_PATH::${WZ_REPO_PATH}"
+        echo "WZ_REPO_PATH=${WZ_REPO_PATH}" >> $GITHUB_ENV
         echo "::set-output name=WZ_REPO_PATH::${WZ_REPO_PATH}"
     - uses: actions/checkout@v2
       with:
