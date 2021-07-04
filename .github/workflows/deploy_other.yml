@@ -16,6 +16,7 @@ jobs:
             asset-name: "warzone2100_macOS.zip"
             itch-channel: "macos-stable-x64"
       fail-fast: false
+    environment: itch_deploy
     env:
       WZ_TARGET_ARCH: ${{ matrix.build-desc }}
     name: 'Publish ${{ matrix.build-desc }}'
