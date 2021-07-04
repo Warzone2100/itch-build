@@ -5,6 +5,8 @@ on:
     branches:
       - 'master'
 
+concurrency: deploy_other
+
 jobs:
   publish_build_to_itch:
     strategy:
