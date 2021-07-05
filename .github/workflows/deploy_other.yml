@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - build-desc: "macOS"
-            asset-name: "warzone2100_macOS.zip"
+            asset-name: "warzone2100_macOS_universal.zip"
             itch-channel: "macos-stable-x64"
       fail-fast: false
     environment: itch_deploy
