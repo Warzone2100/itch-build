@@ -13,7 +13,7 @@ jobs:
   publish_windows_to_itch:
     strategy:
       matrix:
-        architecture: ["x86", "x64"]
+        architecture: ["x64"]
       fail-fast: false
     environment: itch_deploy
     env:
