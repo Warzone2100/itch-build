@@ -38,11 +38,11 @@ jobs:
         mkdir -p "$UPLOAD_INSTALL_PATH"
         
         echo "DL_BASEDIR=${DL_BASEDIR}" >> $GITHUB_ENV
-        echo "::set-output name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "DL_BASEDIR=${DL_BASEDIR}" >> $GITHUB_OUTPUT
         echo "BUTLER_INSTALL_PATH=${BUTLER_INSTALL_PATH}" >> $GITHUB_ENV
-        echo "::set-output name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "BUTLER_INSTALL_PATH=${BUTLER_INSTALL_PATH}" >> $GITHUB_OUTPUT
         echo "UPLOAD_INSTALL_PATH=${UPLOAD_INSTALL_PATH}" >> $GITHUB_ENV
-        echo "::set-output name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        echo "UPLOAD_INSTALL_PATH=${UPLOAD_INSTALL_PATH}" >> $GITHUB_OUTPUT
         
         # Get the latest GitHub release info
         github_latest_release_url="https://api.github.com/repos/Warzone2100/warzone2100/releases/latest"
@@ -50,17 +50,17 @@ jobs:
         
         WZ_LATEST_RELEASE_TAG=$(cat "$DL_BASEDIR/latest.json" | jq --raw-output '.tag_name')
         echo "WZ_LATEST_RELEASE_TAG=$WZ_LATEST_RELEASE_TAG"
-        echo "::set-output name=WZ_LATEST_RELEASE_TAG::${WZ_LATEST_RELEASE_TAG}"
+        echo "WZ_LATEST_RELEASE_TAG=${WZ_LATEST_RELEASE_TAG}" >> $GITHUB_OUTPUT
         
         WZ_LATEST_RELEASE_ASSET_URL=$(cat "$DL_BASEDIR/latest.json" | jq --raw-output '.assets | .[] | select(.name=="${{ matrix.asset-name }}") | .url')
         echo "WZ_LATEST_RELEASE_ASSET_URL=$WZ_LATEST_RELEASE_ASSET_URL"
-        echo "::set-output name=WZ_LATEST_RELEASE_ASSET_URL::${WZ_LATEST_RELEASE_ASSET_URL}"
+        echo "WZ_LATEST_RELEASE_ASSET_URL=${WZ_LATEST_RELEASE_ASSET_URL}" >> $GITHUB_OUTPUT
         
         # Configure WZ_REPO_PATH
         WZ_REPO_PATH="${{ github.workspace }}\itchrepo"
         echo "WZ_REPO_PATH=${WZ_REPO_PATH}" >> $GITHUB_ENV
-        echo "::set-output name=WZ_REPO_PATH::${WZ_REPO_PATH}"
-    - uses: actions/checkout@v2
+        echo "WZ_REPO_PATH=${WZ_REPO_PATH}" >> $GITHUB_OUTPUT
+    - uses: actions/checkout@v3
       with:
         path: 'itchrepo'
     - name: Download & Install Itch.io Butler
