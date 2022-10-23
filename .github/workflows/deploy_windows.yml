@@ -35,11 +35,11 @@ jobs:
         New-Item -ItemType Directory -Force -Path "$UPLOAD_INSTALL_PATH"
         
         echo "DL_BASEDIR=${DL_BASEDIR}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "::set-output name=DL_BASEDIR::${DL_BASEDIR}"
+        echo "DL_BASEDIR=${DL_BASEDIR}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         echo "BUTLER_INSTALL_PATH=${BUTLER_INSTALL_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "::set-output name=BUTLER_INSTALL_PATH::${BUTLER_INSTALL_PATH}"
+        echo "BUTLER_INSTALL_PATH=${BUTLER_INSTALL_PATH}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         echo "UPLOAD_INSTALL_PATH=${UPLOAD_INSTALL_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "::set-output name=UPLOAD_INSTALL_PATH::${UPLOAD_INSTALL_PATH}"
+        echo "UPLOAD_INSTALL_PATH=${UPLOAD_INSTALL_PATH}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         
         # Get the latest GitHub release info
         $github_latest_release_url="https://api.github.com/repos/Warzone2100/warzone2100/releases/latest"
@@ -48,19 +48,19 @@ jobs:
 
         $WZ_LATEST_RELEASE_TAG=($WZ_LATEST_RELEASE_INFO.tag_name)
         echo "WZ_LATEST_RELEASE_TAG=$WZ_LATEST_RELEASE_TAG"
-        echo "::set-output name=WZ_LATEST_RELEASE_TAG::${WZ_LATEST_RELEASE_TAG}"
+        echo "WZ_LATEST_RELEASE_TAG=${WZ_LATEST_RELEASE_TAG}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
   
         $Desired_Asset_Name="warzone2100_win_${env:WZ_TARGET_ARCH}_archive.zip"
         $WZ_LATEST_RELEASE_ASSET=($WZ_LATEST_RELEASE_INFO.assets | where { $_.name -eq "$Desired_Asset_Name" })
         $WZ_LATEST_RELEASE_ASSET_URL=($WZ_LATEST_RELEASE_ASSET.url)
         echo "WZ_LATEST_RELEASE_ASSET_URL=$WZ_LATEST_RELEASE_ASSET_URL"
-        echo "::set-output name=WZ_LATEST_RELEASE_ASSET_URL::${WZ_LATEST_RELEASE_ASSET_URL}"
+        echo "WZ_LATEST_RELEASE_ASSET_URL=${WZ_LATEST_RELEASE_ASSET_URL}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         
         # Configure WZ_REPO_PATH
         $WZ_REPO_PATH="${{ github.workspace }}\itchrepo"
         echo "WZ_REPO_PATH=${WZ_REPO_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "::set-output name=WZ_REPO_PATH::${WZ_REPO_PATH}"
-    - uses: actions/checkout@v2
+        echo "WZ_REPO_PATH=${WZ_REPO_PATH}" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+    - uses: actions/checkout@v3
       with:
         path: 'itchrepo'
     - name: Download & Install Itch.io Butler
