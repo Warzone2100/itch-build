@@ -74,8 +74,7 @@ jobs:
         $BUTLER_DL_PATH = "${{ steps.config.outputs.DL_BASEDIR }}\butler-win.zip"
         $BUTLER_DL_URL="https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default"
         Write-Host "Original Url: `"${BUTLER_DL_URL}`""
-        $url = Get-RedirectedUrl "${BUTLER_DL_URL}"
-        Write-Host "Redirected Url: `"$url`""
+        $url = "${BUTLER_DL_URL}"
         $req = Req -Params @{ 'Method'='GET';'Uri'="$url";'OutFile'="$BUTLER_DL_PATH" } -Retries 3 -SecondsDelay 10
         
         # Extract the ZIP file
