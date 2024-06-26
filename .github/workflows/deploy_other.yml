@@ -16,11 +16,14 @@ jobs:
         include:
           - build-desc: "macOS"
             asset-name: "warzone2100_macOS_universal.zip"
+            itch-game: "warzone2100"
             itch-channel: "macos-stable-x64"
+          - build-desc: "web-wasm32"
+            asset-name: "warzone2100_web_wasm32_archive.zip"
+            itch-game: "warzone2100-web-edition"
+            itch-channel: "web-wasm32"
       fail-fast: false
     environment: itch_deploy
-    env:
-      WZ_TARGET_ARCH: ${{ matrix.build-desc }}
     name: 'Publish ${{ matrix.build-desc }}'
     runs-on: ubuntu-latest
     steps:
@@ -81,11 +84,20 @@ jobs:
         curl -H "Accept: application/octet-stream" -H "Authorization: token ${GITHUB_TOKEN}" -Lf "${{ steps.config.outputs.WZ_LATEST_RELEASE_ASSET_URL }}" --retry 3 --connect-timeout "30" --output "${RELEASE_ARCHIVE_DL_PATH}"
         unzip "${RELEASE_ARCHIVE_DL_PATH}" -d "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}"
     - name: Add .itch.toml
+      if: ${{ !startsWith(matrix.build-desc, 'web') }}
       working-directory: './itchrepo'
       run: |
         cp "pkg/.itch.toml" "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}/.itch.toml"
+    - name: Remove pre-compressed .gz files (web builds)
+      if: ${{ startsWith(matrix.build-desc, 'web') }}
+      working-directory: ${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}
+      run: |
+        find . -name "*.gz" -type f
+        find . -name "*.gz" -type f -delete
     - name: 'Push ${{ matrix.build-desc }} build using Butler'
       env:
         BUTLER_API_KEY: ${{ secrets.ITCH_API_KEY }}
+        ITCH_GAME: ${{ matrix.itch-game }}
+        ITCH_CHANNEL: ${{ matrix.itch-channel }}
       run: |
-        "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}/butler" push "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}" "warzone-2100/warzone2100:${{ matrix.itch-channel }}" --userversion "${{ steps.config.outputs.WZ_LATEST_RELEASE_TAG }}" --if-changed
+        "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}/butler" push "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}" "warzone-2100/${ITCH_GAME}:${ITCH_CHANNEL}" --userversion "${{ steps.config.outputs.WZ_LATEST_RELEASE_TAG }}" --if-changed
