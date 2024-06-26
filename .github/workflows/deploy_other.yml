@@ -80,7 +80,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        RELEASE_ARCHIVE_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}\release-archive.zip"
+        RELEASE_ARCHIVE_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}/release-archive.zip"
         curl -H "Accept: application/octet-stream" -H "Authorization: token ${GITHUB_TOKEN}" -Lf "${{ steps.config.outputs.WZ_LATEST_RELEASE_ASSET_URL }}" --retry 3 --connect-timeout "30" --output "${RELEASE_ARCHIVE_DL_PATH}"
         unzip "${RELEASE_ARCHIVE_DL_PATH}" -d "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}"
     - name: Add .itch.toml
@@ -88,6 +88,15 @@ jobs:
       working-directory: './itchrepo'
       run: |
         cp "pkg/.itch.toml" "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}/.itch.toml"
+    - name: Download and bundle sequences (web builds)
+      if: ${{ startsWith(matrix.build-desc, 'web') }}
+      working-directory: ${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}
+      env:
+        WEB_SEQUENCES_DL_URL: "https://github.com/Warzone2100/itch-build/releases/download/v1-web/sequences-web-low.zip"
+      run: |
+        SEQUENCES_ARCHIVE_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}/sequences-web-low.zip"
+        curl -Lf "${WEB_SEQUENCES_DL_URL}" --retry 3 --connect-timeout "30" --output "${SEQUENCES_ARCHIVE_DL_PATH}"
+        unzip "${SEQUENCES_ARCHIVE_DL_PATH}" -d "${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}/sequences"
     - name: Remove pre-compressed .gz files (web builds)
       if: ${{ startsWith(matrix.build-desc, 'web') }}
       working-directory: ${{ steps.config.outputs.UPLOAD_INSTALL_PATH }}
