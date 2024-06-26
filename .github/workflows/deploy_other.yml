@@ -60,7 +60,7 @@ jobs:
         WZ_REPO_PATH="${{ github.workspace }}\itchrepo"
         echo "WZ_REPO_PATH=${WZ_REPO_PATH}" >> $GITHUB_ENV
         echo "WZ_REPO_PATH=${WZ_REPO_PATH}" >> $GITHUB_OUTPUT
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: 'itchrepo'
     - name: Download & Install Itch.io Butler
