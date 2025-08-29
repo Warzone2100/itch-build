@@ -70,7 +70,7 @@ jobs:
       id: butler-install
       run: |
         BUTLER_DL_PATH="${{ steps.config.outputs.DL_BASEDIR }}\butler.zip"
-        curl -Lf "https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default" --retry 3 --connect-timeout "30" --output "$BUTLER_DL_PATH"
+        curl -Lf "https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default" --retry 3 --connect-timeout "30" --output "$BUTLER_DL_PATH"
         unzip "$BUTLER_DL_PATH" -d "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}"
         # GNU unzip tends to not set the executable bit even though it's set in the .zip
         chmod +x "${{ steps.config.outputs.BUTLER_INSTALL_PATH }}/butler"
