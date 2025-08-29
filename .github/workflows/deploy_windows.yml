@@ -72,7 +72,7 @@ jobs:
         . "${env:WZ_REPO_PATH}\.ci\powershell\request.ps1"
         
         $BUTLER_DL_PATH = "${{ steps.config.outputs.DL_BASEDIR }}\butler-win.zip"
-        $BUTLER_DL_URL="https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default"
+        $BUTLER_DL_URL="https://broth.itch.zone/butler/windows-amd64/LATEST/archive/default"
         Write-Host "Original Url: `"${BUTLER_DL_URL}`""
         $url = "${BUTLER_DL_URL}"
         $req = Req -Params @{ 'Method'='GET';'Uri'="$url";'OutFile'="$BUTLER_DL_PATH" } -Retries 3 -SecondsDelay 10
